@@ -32,10 +32,41 @@ async function run() {
     // Jobs Api
     // get display all jobs
     app.get("/jobs", async (req, res) => {
-      const cursor = jobsCollection.find();
+
+      // Query in Email 
+      const email = req.query.email;
+      const query = {}
+      if(email){
+        query.hr_email = email;
+      }
+
+
+      const cursor = jobsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
+
+
+// ! explain
+        app.get("/jobs/applications", async (req,res) => {
+      const email = req.query.email
+      const query = {hr_email: email}
+      const jobs = await jobsCollection.find(query).toArray()
+
+// * bustaparci na  
+      // should use aggregate to have optimum data fetching
+      for(const job of jobs){
+        const applicationQuery = {jobId: job._id.toString()}
+
+        const application_count = await applicationsCollection.countDocuments(applicationQuery)
+        job.application_count = application_count
+
+      }
+
+      res.send(jobs)
+    })
+
+
 
     // Job Details
     app.get("/jobs/:id", async (req, res) => {
@@ -52,6 +83,9 @@ async function run() {
       const result = await jobsCollection.insertOne(newJob);
       res.send(result);
     })
+
+
+
 
     app.get("/applications", async (req, res) => {
       const email = req.query.email;
@@ -73,12 +107,38 @@ async function run() {
 
       res.send(result);
     });
+
+
+    // applications Jobs id
+    app.get('/applications/jobs/:id', async (req, res) =>{
+      const job_id = req.params.jobs_id;
+      const query = {jobId: job_id};
+      const result = await applicationsCollection.find(query).toArray();
+      res.send(result)
+    })
+
+
+
     // jobs application related apis
     app.post("/applications", async (req, res) => {
       const application = req.body;
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
+
+
+    app.patch("/applications/:id" , async (req,res) => {
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const UpdateDoc = {
+        $set:{
+          status:req.body.status
+        }
+      }
+
+      const result = await applicationsCollection.updateOne(filter,UpdateDoc);
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
