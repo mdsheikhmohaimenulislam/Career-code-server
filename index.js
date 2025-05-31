@@ -16,6 +16,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser())
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sltbrlg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -108,6 +109,11 @@ async function run() {
 
     app.get("/applications", async (req, res) => {
       const email = req.query.email;
+
+
+         console.log('inside application api ',req.cookies);
+
+ 
       const query = {
         applicant: email,
       };
@@ -138,6 +144,7 @@ async function run() {
     // jobs application related apis
     app.post("/applications", async (req, res) => {
       const application = req.body;
+
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
