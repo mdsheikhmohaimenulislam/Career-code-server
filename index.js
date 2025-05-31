@@ -10,13 +10,47 @@ require("dotenv").config();
 // middleWare
 app.use(
   cors({
-    // Cors setUp cookie
+    //? Cors setUp cookie
     origin: ["http://localhost:5173"], // Your frondEnd
     credentials: true, //Allow Cookies
   })
 );
 app.use(express.json());
-app.use(cookieParser())
+
+//? cookie parser
+app.use(cookieParser());
+
+// ? logger
+const logger = (req,res, next) => {
+  console.log('inside the  logger middleware');
+  next();
+};
+
+// ? verify Token
+const verifyToken = (req,res, next) => {
+  const token = req?.cookies?.token
+  console.log('cookie in the  middleware ', token);
+
+  // unauthorized access Token
+  if(!token){
+    return res.status(401).send({message: 'unauthorized access'})
+  };
+
+  //? verify
+  jwt.verify(token, process.env.JWT_ACCESS_SECRET, (error, decoded) => {
+
+    // unauthorized access error
+    if(error){
+      return res.status(401).send({message: 'unauthorized access'})
+    }
+    req.decoded = decoded;
+
+      next();
+  })
+
+
+
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sltbrlg.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -38,17 +72,17 @@ async function run() {
       .db("careerCode")
       .collection("application");
 
-    //* JWT Token Related api
+    //? JWT Token Related api
     app.post("/jwt", async (req, res) => {
       const { email } = req.body;
       const user = { email };
 
-      //* Generated api
+      //? Generated api
       const token = jwt.sign(user, process.env.JWT_ACCESS_SECRET, {
         expiresIn: "1h",
       });
 
-      // Set token in the cookies
+      //? Set token in the cookies
       res.cookie("token", token, {
         httpOnly: true,
         secure: false,
@@ -78,8 +112,8 @@ async function run() {
       const query = { hr_email: email };
       const jobs = await jobsCollection.find(query).toArray();
 
-      // *
-      // should use aggregate to have optimum data fetching
+      
+      //* should use aggregate to have optimum data fetching
       for (const job of jobs) {
         const applicationQuery = { jobId: job._id.toString() };
 
@@ -107,11 +141,16 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/applications", async (req, res) => {
+    //? cookies add hbe 
+    app.get("/applications", logger , verifyToken, async (req, res) => {
       const email = req.query.email;
 
 
-         console.log('inside application api ',req.cookies);
+        //  console.log('inside application api ',req.cookies);
+        // forbidden access
+        if(email !== req.decoded.email){
+          return res.status(403).send({message: "forbidden access"})
+        }
 
  
       const query = {
